@@ -11,6 +11,8 @@ from db import HistoryDB
 from sendmail import Sendmail
 
 PATH = os.path.dirname(os.path.abspath(__file__))
+PROG = os.path.splitext(os.path.basename(__file__))[0]
+
 
 CONFIG = {
     'mail': {
@@ -27,6 +29,10 @@ CONFIG = {
         'api-key': 'key',
     },
 }
+
+
+def file_path(filename):
+    return os.path.join(PATH, filename)
 
 
 def load_config(fname):
@@ -115,18 +121,10 @@ class Redmine(RedmineClient):
 
 if __name__ == "__main__":
 
-    conf_file = PATH + '/test.conf'
-    sla_file = PATH + '/sla.json'
-    db_file = PATH + '/history.db'
-    # print conf_file
-    # print sla_file
-    # print db_file
-    # sys.exit()
-
-    load_config(conf_file)
+    load_config(file_path('test.conf'))
     sendmail = Sendmail(CONFIG['mail'])
-    sla = SLA(load_json(sla_file))
-    history = HistoryDB(db_file)
+    sla = SLA(load_json(file_path('sla.json')))
+    history = HistoryDB(file_path('history.db'))
     # history.reset()
     rm = Redmine(CONFIG)
 
