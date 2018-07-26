@@ -148,8 +148,8 @@ if __name__ == "__main__":
 
                     print '======================================'
                     print 'Id:', issue['id']
-                    print 'Issue:', issue['subject'].decode('utf-8')
-                    print 'Project:', project['name'].decode('utf-8')
+                    print 'Issue:', issue['subject'].encode('utf-8')
+                    print 'Project:', project['name'].encode('utf-8')
                     print 'SLA:', project['sla']
                     print 'Time since creation:', time_diff(issue['created_on'], False)
                     print 'Time:', time_window['name']

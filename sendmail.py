@@ -63,7 +63,7 @@ class Sendmail(object):
         try:
             server = smtplib.SMTP_SSL(self._config['host'], self._config['port'])
             # if self._debug:
-            server.set_debuglevel(1)
+            # server.set_debuglevel(1)
             server.login(self._config['user'], self._config['password'])
             server.sendmail(self._config['from'], rcpt.split(','), _msg.as_string())
             server.quit()
