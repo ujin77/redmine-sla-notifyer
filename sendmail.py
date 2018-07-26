@@ -36,7 +36,7 @@ TEMPLATE = u"""
     <li><strong>Уровень обслуживания: </strong>{{ sla }}</li>
     <li><strong>Время с момента добавления: </strong>{{ time_after_creation }}</li>
     <li><strong>Эскалация: </strong>{{ time_window }}</li>
-    <li><strong>Уведомления отосланы: </strong>{{ notify_roles }}</li>
+    <li><strong>Уведомления отправлены: </strong>{{ notify_roles }}</li>
 </ul>
 <hr>
 <span class="footer">
