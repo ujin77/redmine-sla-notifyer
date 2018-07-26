@@ -117,7 +117,7 @@ if __name__ == "__main__":
     sendmail = Sendmail(CONFIG['mail'])
     sla = SLA(load_json('sla.json'))
     history = HistoryDB('history.db')
-    history.reset()
+    # history.reset()
     rm = Redmine(CONFIG)
 
     for project in rm.get_projects_with_sla():
