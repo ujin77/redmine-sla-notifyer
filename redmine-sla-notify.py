@@ -123,7 +123,6 @@ if __name__ == "__main__":
     for project in rm.get_projects_with_sla():
         roles = rm.get_memberships(project['id'])
         for issue in rm.get_issues(project['id']):
-            # notified = sla.notified(project['sla'], time_diff(issue['created_on']))
             time_window = sla.in_time_window(project['sla'], time_diff(issue['created_on']))
             if time_window:
                 # print json.dumps(time_window, indent=2, ensure_ascii=False)
@@ -158,5 +157,5 @@ if __name__ == "__main__":
                             notify_roles=notify_roles.decode('utf-8')
                                  ):
                         history.sent(issue['id'], time_window['name'])
-                else:
-                    print 'Issue:', issue['id'], '-', issue['subject'], 'Project:', project['name'], '-', time_window['name']
+                # else:
+                #     print 'Issue:', issue['id'], '-', issue['subject'], 'Project:', project['name'], '-', time_window['name']
