@@ -10,6 +10,8 @@ from redmine import SLA, RedmineClient, time_diff
 from db import HistoryDB
 from sendmail import Sendmail
 
+PATH = os.path.dirname(os.path.abspath(__file__))
+
 CONFIG = {
     'mail': {
         'to': 'test@domain.local',
@@ -113,10 +115,18 @@ class Redmine(RedmineClient):
 
 if __name__ == "__main__":
 
-    load_config('test.conf')
+    conf_file = PATH + '/test.conf'
+    sla_file = PATH + '/sla.json'
+    db_file = PATH + '/history.db'
+    # print conf_file
+    # print sla_file
+    # print db_file
+    # sys.exit()
+
+    load_config(conf_file)
     sendmail = Sendmail(CONFIG['mail'])
-    sla = SLA(load_json('sla.json'))
-    history = HistoryDB('history.db')
+    sla = SLA(load_json(sla_file))
+    history = HistoryDB(db_file)
     # history.reset()
     rm = Redmine(CONFIG)
 
