@@ -1,0 +1,44 @@
+{
+    "24x7": {
+            "time_of_processing": 4,
+            "time_windows": [
+                {
+                    "name": "0%",
+                    "notify": [],
+                    "percent": 0
+                },
+                {
+                    "name": "12,5%",
+                    "notify": [
+                        "Manager"
+                    ],
+                    "percent": 12.5
+                },
+                {
+                    "name": "25%",
+                    "notify": [
+                        "Manager",
+                        "Engineer"
+                    ],
+                    "percent": 25
+                },
+                {
+                    "name": "50%",
+                    "notify": [
+                        "Manager",
+                        "Engineer"
+                    ],
+                    "percent": 50
+                },
+                {
+                    "name": "75%",
+                    "notify": [
+                        "Manager",
+                        "Engineer",
+                        "Director"
+                    ],
+                    "percent": 75
+                }
+            ]
+         }
+}

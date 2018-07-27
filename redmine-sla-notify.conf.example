@@ -1,0 +1,12 @@
+[redmine]
+url=http://localhost
+api-key=<key>
+
+[mail]
+host=<smtp_host>
+port=465
+user=<mail_user>
+password=<password>
+from=<from>
+subject=[ALARM]
+redmine_url=http://localhost

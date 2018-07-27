@@ -30,7 +30,7 @@ CONFIG = {
     'redmine': {
         'url': 'http://localhost',
         'api-key': 'key',
-    },
+    }
 }
 
 

@@ -1,0 +1,36 @@
+[loggers]
+keys=root
+
+[handlers]
+keys=consoleHandler,rotateFileHandler
+
+[formatters]
+keys=Console,Syslog
+
+[logger_root]
+level=DEBUG
+handlers=consoleHandler,rotateFileHandler
+
+[handler_consoleHandler]
+class=StreamHandler
+level=DEBUG
+formatter=Console
+args=(sys.stdout,)
+
+[handler_syslogHandler]
+class=handlers.SysLogHandler
+level=DEBUG
+formatter=Syslog
+args=(('localhost', handlers.SYSLOG_UDP_PORT), handlers.SysLogHandler.LOG_USER)
+
+[handler_rotateFileHandler]
+class=handlers.RotatingFileHandler
+level=DEBUG
+formatter=Console
+args=('redmine-sla-notify.log', 'a', 100000, 3, 'utf8')
+
+[formatter_Console]
+format=%(asctime)s %(filename)s[%(lineno)d][%(levelname)s]: %(message)s
+
+[formatter_Syslog]
+format=%(filename)s[LINE:%(lineno)d]# %(levelname)-8s %(message)s
