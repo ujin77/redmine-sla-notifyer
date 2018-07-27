@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     # logging.basicConfig(level=logging.DEBUG)
     # logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
-    logging.config.fileConfig('logging.conf')
+    logging.config.fileConfig(file_path('logging.conf'))
 
     # logging.debug("Debug")
     # logging.info("Info")
