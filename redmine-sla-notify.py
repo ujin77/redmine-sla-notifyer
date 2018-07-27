@@ -134,7 +134,7 @@ if __name__ == "__main__":
     if os.path.isfile(args.log_conf_file):
         logfileConfig(args.log_conf_file)
     else:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
 
     logging.debug("START")
     logging.debug('Config file: %s' % args.conf_file)
