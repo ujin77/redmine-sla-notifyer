@@ -10,8 +10,7 @@ from redmine import SLA, RedmineClient, time_diff
 from db import HistoryDB
 from sendmail import Sendmail
 import logging
-import logging.config
-
+from logging.config import fileConfig as logfileConfig
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 PROG = os.path.splitext(os.path.basename(__file__))[0]
@@ -50,9 +49,9 @@ def load_config(fname):
                     if not CONFIG.get(section): CONFIG[section] = {}
                     CONFIG[section][name] = value.strip("'\"")
         except ConfigParser.MissingSectionHeaderError as e:
-            print e
+            logging.error(e)
         except Exception as e:
-            print e
+            logging.error(e)
 
 
 def load_json(fname):
@@ -60,7 +59,7 @@ def load_json(fname):
         try:
             return json.load(open(fname), encoding='utf-8')
         except Exception as e:
-            print e
+            logging.error(e)
 
 class Redmine(RedmineClient):
 
@@ -126,22 +125,17 @@ class Redmine(RedmineClient):
 
 if __name__ == "__main__":
 
-    # logging.basicConfig(level=logging.DEBUG)
-    # logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
-    logging.config.fileConfig(file_path('logging.conf'))
-
-    # logging.debug("Debug")
-    # logging.info("Info")
-    # logging.warn("Warn")
-    # logging.error("Error")
-    # logging.critical("Critical")
+    if os.path.isfile(file_path('logging.conf')):
+        logfileConfig(file_path('logging.conf'))
+    else:
+        logging.basicConfig(level=logging.DEBUG)
+    logging.debug("START")
 
     load_config(file_path('test.conf'))
     sendmail = Sendmail(CONFIG['mail'])
     sla = SLA(load_json(file_path('sla.json')))
     history = HistoryDB(file_path('history.db'))
     # history.reset()
-    # sys.exit()
     rm = Redmine(CONFIG)
 
     for project in rm.get_projects_with_sla():
@@ -150,7 +144,7 @@ if __name__ == "__main__":
             time_window = sla.in_time_window(project['sla'], time_diff(issue['created_on']))
             if time_window:
                 if history.not_sent(issue['id'], time_window['name']):
-                    notify_roles = ', '.join(str('%s' % item.encode('utf-8')) for item in time_window['notify'])
+                    notify_roles = ', '.join(unicode(u'%s' % item) for item in time_window['notify'])
                     if notify_roles:
                         emails = {}
                         for notify_role in time_window['notify']:
@@ -160,14 +154,14 @@ if __name__ == "__main__":
                                     emails[mail] = ''
                         rcpt = ', '.join(str('%s' % item) for item in emails)
 
-                        logging.info('[%i] %s' % (issue['id'], issue['subject']))
-                        logging.info('[%i] Project: %s' % (issue['id'], project['name']))
-                        logging.info('[%i] SLA: %s' % (issue['id'], project['sla']))
+                        logging.info(u'[%i] %s' % (issue['id'], issue['subject']))
+                        logging.info(u'[%i] Project: %s' % (issue['id'], project['name']))
+                        logging.info(u'[%i] SLA: %s' % (issue['id'], project['sla']))
                         logging.info(
-                            '[%i] Time after creation: %s' % (issue['id'], time_diff(issue['created_on'], False)))
-                        logging.info('[%i] Time window: %s' % (issue['id'], time_window['name']))
-                        logging.info('[%i] Notify roles: %s' % (issue['id'], notify_roles))
-                        logging.info('[%i] Notify emails: %s' % (issue['id'], rcpt))
+                            u'[%i] Time after creation: %s' % (issue['id'], time_diff(issue['created_on'], False)))
+                        logging.info(u'[%i] Time window: %s' % (issue['id'], time_window['name']))
+                        logging.info(u'[%i] Notify roles: %s' % (issue['id'], notify_roles))
+                        logging.info(u'[%i] Notify emails: %s' % (issue['id'], rcpt))
                         if sendmail.send(
                                 rcpt=rcpt,
                                 issue_id=issue['id'],
@@ -176,7 +170,8 @@ if __name__ == "__main__":
                                 sla=project['sla'],
                                 time_after_creation=time_diff(issue['created_on'], False),
                                 time_window=time_window['name'],
-                                notify_roles=notify_roles.decode('utf-8')
+                                notify_roles=notify_roles
                                      ):
                             history.sent(issue['id'], time_window['name'])
                             logging.info('[%i] emails are sent' % issue['id'])
+    logging.debug("END")

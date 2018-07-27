@@ -11,7 +11,7 @@ import os
 import logging
 
 
-DEFAULT_BATCH_LIMIT = 50
+DEFAULT_BATCH_LIMIT = 100
 
 RM_DATE_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -51,14 +51,13 @@ def delta_to_str(td):
 
 def _debug_value(data, key=''):
     if data:
-        if data.has_key(key):
-            print "DEBUG:", key, '=', data[key]
+        if key in data:
+            logging.debug('response: %s=%s' % (key, data[key]))
 
 
 def _debug_response(response, url=None):
-    print 'DEBUG------------------------------'
     if url:
-        print 'DEBUG: url:', url
+        logging.debug('url: %s' % url)
     if response:
         try:
             resp = json.loads(response)
@@ -67,15 +66,13 @@ def _debug_response(response, url=None):
             _debug_value(resp, 'offset')
             # print json.dumps(json.loads(response), indent=2, ensure_ascii=False)
         except ValueError:
-            print 'DEBUG:', response
-    print 'DEBUG------------------------------'
+            logging.error(response)
 
 
 class Request(object):
 
     def __init__(self, base_url, resource='', params=None, offset=None, limit=None):
         super(Request, self).__init__()
-        # print 'DEBUG Request __init__:', resource, params, offset, limit
         self._base_url = base_url
         self._resource = resource
         self._params = {}
@@ -92,7 +89,6 @@ class Request(object):
 
     def url(self):
         params = self._resource + '.json?' + '&'.join(str('%s=%s' % item) for item in self._params.items())
-        # print 'DEBUG Request url:', params
         return urljoin(self._base_url, params)
 
 
@@ -112,17 +108,18 @@ class RedmineClient(object):
     def _do_request(self, resource, params=None, offset=None, limit=None):
         # print 'DEBUG _do_request:', resource, params, offset, limit
         _request = Request(self._get_cfg('redmine', 'url'), resource, params, offset, limit)
+        # logging.debug('_do_request: %s' % _request.url())
         req = urllib2.Request(url=_request.url())
         req.add_header('X-Redmine-API-Key', self._get_cfg('redmine', 'api-key'))
         try:
             response = urllib2.urlopen(req).read()
         except urllib2.HTTPError as e:
-            print e
+            logging.error(e)
             return {}
         except urllib2.URLError as e:
-            print e
+            logging.error(e)
             return {}
-        # _debug_response(response, _request.url())
+        _debug_response(response, _request.url())
         return json.loads(response)
 
     def _get_data(self, resource, params=None):
@@ -161,11 +158,6 @@ class SLA(object):
         super(SLA, self).__init__()
         self._config = config
         self._calc_persent()
-        # logging.debug("Debug")
-        # logging.info("Info")
-        # logging.warn("Warn")
-        # logging.error("Error")
-        # logging.critical("Critical")
 
     def _calc_persent(self):
         for sla_name in self._config:

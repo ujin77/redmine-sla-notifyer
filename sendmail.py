@@ -5,6 +5,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from jinja2 import Template
+import logging
 
 TEMPLATE = u"""
 <html lang="en">
@@ -62,23 +63,22 @@ class Sendmail(object):
         server = None
         try:
             server = smtplib.SMTP_SSL(self._config['host'], self._config['port'])
-            # if self._debug:
             # server.set_debuglevel(1)
             server.login(self._config['user'], self._config['password'])
             server.sendmail(self._config['from'], rcpt.split(','), _msg.as_string())
             server.quit()
         except smtplib.SMTPAuthenticationError as e:
-            print 'Send mail [SMTPAuthenticationError]:', e.smtp_code, e.smtp_error
+            logging.error('Send mail [SMTPAuthenticationError]: %i %s' % (e.smtp_code, e.smtp_error))
             server.quit()
             return False
         except smtplib.SMTPRecipientsRefused as e:
-            print 'Send mail [SMTPRecipientsRefused]:'
+            logging.error('Send mail [SMTPRecipientsRefused]')
             for (k, v) in e.recipients.items():
-                print k, v[0], v[1]
+                logging.error('%s %s %s' % (k, v[0], v[1]))
             server.quit()
             return False
         except Exception as e:
-            print 'Send mail error:', e
+            logging.error( 'Send mail error: %s' % e )
             return False
         return True
 
