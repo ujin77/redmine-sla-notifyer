@@ -11,6 +11,7 @@ from db import HistoryDB
 from sendmail import Sendmail
 import logging
 from logging.config import fileConfig as logfileConfig
+import argparse
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 PROG = os.path.splitext(os.path.basename(__file__))[0]
@@ -31,8 +32,6 @@ CONFIG = {
         'api-key': 'key',
     },
 }
-
-LOG_FORMAT = u'%(filename)s[LINE:%(lineno)d]# %(levelname)-8s [%(asctime)s]  %(message)s'
 
 
 def file_path(filename):
@@ -60,6 +59,7 @@ def load_json(fname):
             return json.load(open(fname), encoding='utf-8')
         except Exception as e:
             logging.error(e)
+
 
 class Redmine(RedmineClient):
 
@@ -124,18 +124,35 @@ class Redmine(RedmineClient):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROG +'.conf'))
+    parser.add_argument('-s', '--sla-file', default=os.path.join(PATH, 'sla.json'))
+    parser.add_argument('-l', '--log-conf-file', default=os.path.join(PATH, 'logging.conf'))
+    parser.add_argument('-r', '--reset-history', action='store_true', help="Reset history")
+    args = parser.parse_args()
 
-    if os.path.isfile(file_path('logging.conf')):
-        logfileConfig(file_path('logging.conf'))
+    if os.path.isfile(args.log_conf_file):
+        logfileConfig(args.log_conf_file)
     else:
         logging.basicConfig(level=logging.DEBUG)
-    logging.debug("START")
 
-    load_config(file_path('test.conf'))
-    sendmail = Sendmail(CONFIG['mail'])
-    sla = SLA(load_json(file_path('sla.json')))
+    logging.debug("START")
+    logging.debug('Config file: %s' % args.conf_file)
+    logging.debug('SLA config file: %s' % args.sla_file)
+    logging.debug('Log config file: %s' % args.log_conf_file)
+
+    load_config(args.conf_file)
+    if not os.path.isfile(args.sla_file):
+        logging.error("The SLA configuration is not specified")
+        parser.print_help()
+        sys.exit(0)
+
+    sla = SLA(load_json(args.sla_file))
     history = HistoryDB(file_path('history.db'))
-    # history.reset()
+    if args.reset_history:
+        history.reset()
+    sendmail = Sendmail(CONFIG['mail'])
+
     rm = Redmine(CONFIG)
 
     for project in rm.get_projects_with_sla():
@@ -173,5 +190,5 @@ if __name__ == "__main__":
                                 notify_roles=notify_roles
                                      ):
                             history.sent(issue['id'], time_window['name'])
-                            logging.info('[%i] emails are sent' % issue['id'])
+                            logging.info('[%i] Mails are sent' % issue['id'])
     logging.debug("END")

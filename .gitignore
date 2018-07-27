@@ -108,3 +108,5 @@ venv.bak/
 *.conf
 *.json
 *.db
+*.log
+*.log.*
