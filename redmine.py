@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 import time
 import re
 import os
+import logging
+
 
 DEFAULT_BATCH_LIMIT = 50
 
@@ -159,6 +161,11 @@ class SLA(object):
         super(SLA, self).__init__()
         self._config = config
         self._calc_persent()
+        # logging.debug("Debug")
+        # logging.info("Info")
+        # logging.warn("Warn")
+        # logging.error("Error")
+        # logging.critical("Critical")
 
     def _calc_persent(self):
         for sla_name in self._config:
