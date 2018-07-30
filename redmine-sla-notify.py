@@ -188,7 +188,6 @@ if __name__ == "__main__":
                             u'[%i] Time after creation: %s' % (issue['id'], time_diff(issue['created_on'], False)))
                         logging.info(u'[%i] Time window: %s' % (issue['id'], time_window['name']))
                         logging.info(u'[%i] Notify roles: %s' % (issue['id'], notify_roles))
-                        logging.info(u'[%i] Notify emails: %s' % (issue['id'], rcpt))
 
                         if sendmail.send(
                                 rcpt=rcpt,
@@ -202,7 +201,7 @@ if __name__ == "__main__":
                                 notify_roles=notify_roles
                                      ):
                             history.sent(issue['id'], time_window['name'])
-                            logging.info('[%i] Mails are sent' % issue['id'])
+                            logging.info('[%i] Email notifications sent to: %s' % (issue['id'], rcpt))
                 else:
-                    logging.debug('#%i %s in history' % (issue['id'], time_window['name']))
+                    logging.debug('#%i SLA: %s - in history' % (issue['id'], time_window['name']))
     logging.debug("END")
