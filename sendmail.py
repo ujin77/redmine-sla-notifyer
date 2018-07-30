@@ -33,6 +33,7 @@ TEMPLATE = u"""
 <span class="header"><p>{{ subject }}</p></span>
 <h1>Задача <a href="{{ url }}/issues/{{ issue_id }}">#{{ issue_id }}</a>: <a href="{{ url }}/issues/{{ issue_id }}">{{ issue_name }}</a></h1>
 <ul class="details">
+    <li><strong>Приоритет: </strong>{{ priority }}</li>
     <li><strong>Проект: </strong>{{ project }}</li>
     <li><strong>Уровень обслуживания: </strong>{{ sla }}</li>
     <li><strong>Время с момента добавления: </strong>{{ time_after_creation }}</li>
@@ -82,11 +83,12 @@ class Sendmail(object):
             return False
         return True
 
-    def send(self, rcpt, issue_id, issue_name, project, sla, time_after_creation, time_window, notify_roles):
+    def send(self, rcpt, issue_id, issue_name, priority, project, sla, time_after_creation, time_window, notify_roles):
         return self._send(rcpt, self.template.render(
             url=self._config['url'],
             issue_id=issue_id,
             issue_name=issue_name,
+            priority=priority,
             project=project,
             sla=sla,
             time_after_creation=time_after_creation,

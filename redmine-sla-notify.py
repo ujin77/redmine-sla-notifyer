@@ -157,6 +157,7 @@ if __name__ == "__main__":
     history = HistoryDB(file_path('history.db'))
     if args.reset_history:
         history.reset()
+    # history.reset()
     sendmail = Sendmail(CONFIG['mail'])
 
     rm = Redmine(CONFIG)
@@ -180,6 +181,7 @@ if __name__ == "__main__":
                         rcpt = ', '.join(str('%s' % item) for item in emails)
 
                         logging.info(u'[%i] %s' % (issue['id'], issue['subject']))
+                        logging.info(u'[%i] Priority: %s' % (issue['id'], issue['priority']))
                         logging.info(u'[%i] Project: %s' % (issue['id'], project['name']))
                         logging.info(u'[%i] SLA: %s' % (issue['id'], project['sla']))
                         logging.info(
@@ -187,10 +189,12 @@ if __name__ == "__main__":
                         logging.info(u'[%i] Time window: %s' % (issue['id'], time_window['name']))
                         logging.info(u'[%i] Notify roles: %s' % (issue['id'], notify_roles))
                         logging.info(u'[%i] Notify emails: %s' % (issue['id'], rcpt))
+
                         if sendmail.send(
                                 rcpt=rcpt,
                                 issue_id=issue['id'],
                                 issue_name=issue['subject'],
+                                priority=issue['priority'],
                                 project=project['name'],
                                 sla=project['sla'],
                                 time_after_creation=time_diff(issue['created_on'], False),
