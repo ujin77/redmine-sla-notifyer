@@ -15,6 +15,15 @@ DEFAULT_BATCH_LIMIT = 100
 
 RM_DATE_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
+DEFAULT_PRIORITY = {
+    'time_of_processing': 0,
+    'business_time': False,
+    'time_windows': []
+}
+
+def log_debug(name, msg):
+    logging.debug('%s: %s' % (name, msg))
+
 
 def utc_to_local(dt):
     if time.localtime().tm_isdst:
@@ -147,6 +156,120 @@ class RedmineClient(object):
         return self._get_data(resource, params)
 
 
+class BusinessTime(object):
+
+    def __init__(self, start_time, worktiming=[9, 18],
+                 weekends=[6, 7]):
+        super(BusinessTime, self).__init__()
+
+        self.weekends = weekends
+        self.begin_work = worktiming[0]
+        self.end_work = worktiming[1]
+        self.datetime_start = start_time
+        self.datetime_end = datetime.now()
+        self.day_hours = (self.end_work - self.begin_work)
+        self.day_minutes = self.day_hours * 60  # minutes in a work day
+
+    def getdays(self, start_time=None):
+        return int(self.getminutes(start_time) / self.day_minutes)
+
+    def gethours(self, start_time=None):
+        return int(self.getminutes(start_time) / 60)
+
+    def getminutes(self, start_time=None):
+        if start_time:
+            self.datetime_start = start_time
+        return self._getminutes()
+
+    def _getminutes(self):
+        """
+        Return the difference in minutes.
+        """
+        # Set initial default variables
+        dt_start = self.datetime_start  # datetime of start
+        dt_end = self.datetime_end  # datetime of end
+        worktime_in_seconds = 0
+
+        if dt_start.date() == dt_end.date():
+            # starts and ends on same workday
+            if self.is_weekend(dt_start):
+                return 0
+            else:
+                if dt_start.hour < self.begin_work:
+                    # set start time to opening hour
+                    dt_start = datetime.datetime(
+                        year=dt_start.year,
+                        month=dt_start.month,
+                        day=dt_start.day,
+                        hour=self.begin_work,
+                        minute=0)
+                if dt_start.hour >= self.end_work or \
+                        dt_end.hour < self.begin_work:
+                    return 0
+                if dt_end.hour >= self.end_work:
+                    dt_end = datetime.datetime(
+                        year=dt_end.year,
+                        month=dt_end.month,
+                        day=dt_end.day,
+                        hour=self.end_work,
+                        minute=0)
+                worktime_in_seconds = (dt_end - dt_start).total_seconds()
+        elif (dt_end - dt_start).days < 0:
+            # ends before start
+            return 0
+        else:
+            # start and ends on different days
+            current_day = dt_start  # marker for counting workdays
+            while not current_day.date() == dt_end.date():
+                if not self.is_weekend(current_day):
+                    if current_day == dt_start:
+                        # increment hours of first day
+                        if current_day.hour < self.begin_work:
+                            # starts before the work day
+                            worktime_in_seconds += self.day_minutes * 60  # add 1 full work day
+                        elif current_day.hour >= self.end_work:
+                            pass  # no time on first day
+                        else:
+                            # starts during the working day
+                            dt_currentday_close = datetime(
+                                year=dt_start.year,
+                                month=dt_start.month,
+                                day=dt_start.day,
+                                hour=self.end_work,
+                                minute=0)
+                            worktime_in_seconds += (dt_currentday_close
+                                                    - dt_start).total_seconds()
+                    else:
+                        # increment one full day
+                        worktime_in_seconds += self.day_minutes * 60
+                current_day += timedelta(days=1)  # next day
+            # Time on the last day
+            if not self.is_weekend(dt_end):
+                if dt_end.hour >= self.end_work:  # finish after close
+                    # Add a full day
+                    worktime_in_seconds += self.day_minutes * 60
+                elif dt_end.hour < self.begin_work:  # close before opening
+                    pass  # no time added
+                else:
+                    # Add time since opening
+                    dt_end_open = datetime(
+                        year=dt_end.year,
+                        month=dt_end.month,
+                        day=dt_end.day,
+                        hour=self.begin_work,
+                        minute=0)
+                    worktime_in_seconds += (dt_end - dt_end_open).total_seconds()
+        return int(worktime_in_seconds / 60)
+
+    def is_weekend(self, datetime):
+        """
+        Returns True if datetime lands on a weekend.
+        """
+        for weekend in self.weekends:
+            if datetime.isoweekday() == weekend:
+                return True
+        return False
+
 
 class SLA(object):
 
@@ -158,20 +281,52 @@ class SLA(object):
         super(SLA, self).__init__()
         self._config = config
         self._calc_persent()
+        self.business_time = BusinessTime(None)
 
     def _calc_persent(self):
         for sla_name in self._config:
-            for i in range(len(self._config[sla_name]['time_windows'])):
-                self._config[sla_name]['time_windows'][i]['minutes'] = self._time_percent(
-                    self._config[sla_name]['time_of_processing'],
-                    self._config[sla_name]['time_windows'][i]['percent']
-                )
+            for priority in self._config[sla_name]:
+                for i in range(len(self._config[sla_name][priority]['time_windows'])):
+                    self._config[sla_name][priority]['time_windows'][i]['minutes'] = self._time_percent(
+                        self._config[sla_name][priority]['time_of_processing'],
+                        self._config[sla_name][priority]['time_windows'][i]['percent']
+                    )
         # print json.dumps(self._config, indent=2, ensure_ascii=False)
 
-    def in_time_window(self, sla_name, minutes):
+    def _get_sla(self, name):
+        if name in self._config:
+            return self._config[name]
+        return None
+
+    def _get_priority(self, sla_name, name):
+        if sla_name in self._config:
+            if name in self._config[sla_name]:
+                return self._config[sla_name][name]
+            else:
+                if 'default' in self._config[sla_name]:
+                    return self._config[sla_name]['default']
+        return DEFAULT_PRIORITY
+
+    def _get_time_windows(self, sla_name, priority):
+        return self._get_priority(sla_name, priority)['time_windows']
+
+    def _get_business_time(self, sla_name, priority):
+        return self._get_priority(sla_name, priority)['business_time']
+
+    def _get_time_of_processing(self, sla_name, priority):
+        return self._get_priority(sla_name, priority)['time_of_processing']
+
+    def in_time_window(self, sla_name, priority, start_date):
+        if self._get_business_time(sla_name, priority):
+            minutes = self.business_time.getminutes(date_from_redmine(start_date, True))
+        else:
+            minutes = time_diff(start_date)
+        return self._in_time_window(sla_name, priority, minutes)
+
+    def _in_time_window(self, sla_name, priority, minutes):
         current_time_window = None
         if sla_name in self._config:
-            for time_window in self._config[sla_name]['time_windows']:
+            for time_window in self._get_time_windows(sla_name, priority):
                 if minutes >= time_window['minutes']:
                     current_time_window = time_window
                 if minutes < time_window['minutes']:

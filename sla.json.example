@@ -1,6 +1,8 @@
 {
     "24x7": {
+        "default":{
             "time_of_processing": 4,
+            "business_time": false,
             "time_windows": [
                 {
                     "name": "0%",
@@ -40,5 +42,6 @@
                     "percent": 75
                 }
             ]
-         }
+        }
+    }
 }

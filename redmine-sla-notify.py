@@ -38,6 +38,12 @@ def file_path(filename):
     return os.path.join(PATH, filename)
 
 
+def _debug(data):
+    if isinstance(data, dict):
+        for item in data:
+            logging.debug('%s: %s' % (item, data[item]))
+
+
 def load_config(fname):
     if os.path.isfile(fname):
         config = ConfigParser.ConfigParser(allow_no_value=True)
@@ -158,10 +164,12 @@ if __name__ == "__main__":
     for project in rm.get_projects_with_sla():
         roles = rm.get_memberships(project['id'])
         for issue in rm.get_issues(project['id']):
-            time_window = sla.in_time_window(project['sla'], time_diff(issue['created_on']))
+            _debug(issue)
+            time_window = sla.in_time_window(project['sla'], issue['priority'], issue['created_on'])
             if time_window:
                 if history.not_sent(issue['id'], time_window['name']):
                     notify_roles = ', '.join(unicode(u'%s' % item) for item in time_window['notify'])
+                    logging.debug('Issue #%i %s notify: [%s]' % (issue['id'], time_window['name'], notify_roles))
                     if notify_roles:
                         emails = {}
                         for notify_role in time_window['notify']:
@@ -191,4 +199,6 @@ if __name__ == "__main__":
                                      ):
                             history.sent(issue['id'], time_window['name'])
                             logging.info('[%i] Mails are sent' % issue['id'])
+                else:
+                    logging.debug('#%i %s in history' % (issue['id'], time_window['name']))
     logging.debug("END")
