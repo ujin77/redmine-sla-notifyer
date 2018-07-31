@@ -21,6 +21,7 @@ DEFAULT_PRIORITY = {
     'time_windows': []
 }
 
+
 def log_debug(name, msg):
     logging.debug('%s: %s' % (name, msg))
 
@@ -55,7 +56,8 @@ def time_diff(date_string, minutes=True):
 
 
 def delta_to_str(td):
-    return re.match(r'(.*)\:\d+\.\d+$', str(td)).group(1)
+    return re.match(r'(.*):\d+\.\d+$', str(td)).group(1)
+    # return re.match(r'(.*)\:\d+\.\d+$', str(td)).group(1)
 
 
 def _debug_value(data, key=''):
@@ -159,10 +161,12 @@ class RedmineClient(object):
 
 class BusinessTime(object):
 
-    def __init__(self, start_time, worktiming=[9, 18],
-                 weekends=[6, 7]):
+    def __init__(self, start_time, worktiming=None, weekends=None):
         super(BusinessTime, self).__init__()
-
+        if worktiming is None:
+            worktiming = [9, 18]
+        if weekends is None:
+            weekends = [6, 7]
         self.weekends = weekends
         self.begin_work = worktiming[0]
         self.end_work = worktiming[1]
@@ -198,7 +202,7 @@ class BusinessTime(object):
             else:
                 if dt_start.hour < self.begin_work:
                     # set start time to opening hour
-                    dt_start = datetime.datetime(
+                    dt_start = datetime(
                         year=dt_start.year,
                         month=dt_start.month,
                         day=dt_start.day,
@@ -208,7 +212,7 @@ class BusinessTime(object):
                         dt_end.hour < self.begin_work:
                     return 0
                 if dt_end.hour >= self.end_work:
-                    dt_end = datetime.datetime(
+                    dt_end = datetime(
                         year=dt_end.year,
                         month=dt_end.month,
                         day=dt_end.day,
@@ -262,12 +266,12 @@ class BusinessTime(object):
                     worktime_in_seconds += (dt_end - dt_end_open).total_seconds()
         return int(worktime_in_seconds / 60)
 
-    def is_weekend(self, datetime):
+    def is_weekend(self, _datetime):
         """
         Returns True if datetime lands on a weekend.
         """
         for weekend in self.weekends:
-            if datetime.isoweekday() == weekend:
+            if _datetime.isoweekday() == weekend:
                 return True
         return False
 
@@ -334,8 +338,8 @@ class SLA(object):
                     return current_time_window
         return current_time_window
 
-    def notified(self, sla_name, minutes):
-        if sla_name in self._config:
-            return self.in_time_window(sla_name, minutes)['notify']
-        else:
-            return None
+    # def notified(self, sla_name, minutes):
+    #     if sla_name in self._config:
+    #         return self.in_time_window(sla_name, minutes)['notify']
+    #     else:
+    #         return None

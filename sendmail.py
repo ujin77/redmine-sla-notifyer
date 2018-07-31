@@ -31,7 +31,8 @@ TEMPLATE = u"""
 </head>
 <body>
 <span class="header"><p>{{ subject }}</p></span>
-<h1>Задача <a href="{{ url }}/issues/{{ issue_id }}">#{{ issue_id }}</a>: <a href="{{ url }}/issues/{{ issue_id }}">{{ issue_name }}</a></h1>
+<h1>Задача <a href="{{ url }}/issues/{{ issue_id }}">#{{ issue_id }}</a>:
+ <a href="{{ url }}/issues/{{ issue_id }}">{{ issue_name }}</a></h1>
 <ul class="details">
     <li><strong>Приоритет: </strong>{{ priority }}</li>
     <li><strong>Проект: </strong>{{ project }}</li>
@@ -81,7 +82,7 @@ class Sendmail(object):
             server.quit()
             return False
         except Exception as e:
-            logging.error( 'Send mail error: %s' % e )
+            logging.error('Send mail error: %s' % e)
             return False
         return True
 

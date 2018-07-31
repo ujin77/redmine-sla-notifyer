@@ -14,7 +14,7 @@ from logging.config import fileConfig as logfileConfig
 import argparse
 
 PATH = os.path.dirname(os.path.abspath(__file__))
-PROG = os.path.splitext(os.path.basename(__file__))[0]
+PROGRAM = os.path.splitext(os.path.basename(__file__))[0]
 
 
 CONFIG = {
@@ -44,14 +44,15 @@ def _debug(data):
             logging.debug('%s: %s' % (item, data[item]))
 
 
-def load_config(fname):
-    if os.path.isfile(fname):
+def load_config(f_name):
+    if os.path.isfile(f_name):
         config = ConfigParser.ConfigParser(allow_no_value=True)
         try:
-            config.readfp(open(fname))
+            config.readfp(open(f_name))
             for section in config.sections():
                 for (name, value) in config.items(section):
-                    if not CONFIG.get(section): CONFIG[section] = {}
+                    if not CONFIG.get(section):
+                        CONFIG[section] = {}
                     CONFIG[section][name] = value.strip("'\"")
         except ConfigParser.MissingSectionHeaderError as e:
             logging.error(e)
@@ -59,10 +60,10 @@ def load_config(fname):
             logging.error(e)
 
 
-def load_json(fname):
-    if os.path.isfile(fname):
+def load_json(f_name):
+    if os.path.isfile(f_name):
         try:
-            return json.load(open(fname), encoding='utf-8')
+            return json.load(open(f_name), encoding='utf-8')
         except Exception as e:
             logging.error(e)
 
@@ -74,31 +75,31 @@ class Redmine(RedmineClient):
 
     def get_projects_with_sla(self):
         project_sla = []
-        for project in self.get('projects'):
-            if 'custom_fields' in project:
-                for custom_field in project['custom_fields']:
+        for _project in self.get('projects'):
+            if 'custom_fields' in _project:
+                for custom_field in _project['custom_fields']:
                     if custom_field['name'] == 'SLA' and custom_field['value']:
                         project_sla.append({
-                            'id': project['id'],
-                            'identifier': project['identifier'],
-                            'name': project['name'],
+                            'id': _project['id'],
+                            'identifier': _project['identifier'],
+                            'name': _project['name'],
                             'sla': custom_field['value']
                         })
         return project_sla
 
     def get_issues(self, project_id):
         opened_issues = []
-        for issue in self.get('issues', {'project_id': project_id, 'status_id': 'open'}):
+        for _issue in self.get('issues', {'project_id': project_id, 'status_id': 'open'}):
             # print json.dumps(issue, indent=2, ensure_ascii=False)
             opened_issues.append({
-                'id': issue['id'],
-                'project_id': issue['project']['id'],
-                'subject': issue['subject'],
-                'status': issue['status']['name'],
-                'priority': issue['priority']['name'],
-                'author': issue['author']['name'],
-                'assigned_to': issue['assigned_to']['name'] if 'assigned_to' in issue else None,
-                'created_on': issue['created_on']
+                'id': _issue['id'],
+                'project_id': _issue['project']['id'],
+                'subject': _issue['subject'],
+                'status': _issue['status']['name'],
+                'priority': _issue['priority']['name'],
+                'author': _issue['author']['name'],
+                'assigned_to': _issue['assigned_to']['name'] if 'assigned_to' in _issue else None,
+                'created_on': _issue['created_on']
             })
         return opened_issues
 
@@ -130,13 +131,12 @@ class Redmine(RedmineClient):
         return self.users
 
 
-def issue_get_rcpt(_issue):
+def issue_get_rcpt(_issue, _roles):
     emails = {}
     for notify_role in _issue['time_window']['notify']:
-        if notify_role in roles:
-            users = roles[notify_role]['users']
-            for mail in users:
-                emails[mail] = ''
+        if notify_role in _roles:
+            for _mail in _roles[notify_role]['users']:
+                emails[_mail] = ''
     return ', '.join(str('%s' % item) for item in emails)
 
 
@@ -177,7 +177,7 @@ def issue_log_debug(_issue, _msg=''):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROG +'.conf'))
+    parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROGRAM + '.conf'))
     parser.add_argument('-s', '--sla-file', default=os.path.join(PATH, 'sla.json'))
     parser.add_argument('-l', '--log-conf-file', default=os.path.join(PATH, 'logging.conf'))
     parser.add_argument('-r', '--reset-history', action='store_true', help="Reset history")
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     if args.reset_history:
         history.reset()
     # history.reset()
-    sendmail = Sendmail(CONFIG['mail'])
+    mail = Sendmail(CONFIG['mail'])
 
     rm = Redmine(CONFIG)
 
@@ -219,14 +219,13 @@ if __name__ == "__main__":
                     if history.not_sent(issue['id'], issue['time_window']['name']):
                         issue['notify_roles'] = issue_get_notify_roles(issue)
                         if issue['notify_roles']:
-                            issue['rcpt'] = issue_get_rcpt(issue)
+                            issue['rcpt'] = issue_get_rcpt(issue, roles)
                             issue['time_after_creation'] = time_diff(issue['created_on'], False)
                             issue_log_info(issue)
-                            if sendmail.send(issue=issue):
+                            if mail.send(issue=issue):
                                 history.sent(issue['id'], issue['time_window']['name'])
                         else:
                             issue_log_debug(issue, 'no notify roles')
                     else:
                         issue_log_debug(issue, 'in history')
-                        # logging.debug('Issue #%i SLA: %s - in history' % (issue['id'], issue['time_window']['name']))
     logging.debug("END")
