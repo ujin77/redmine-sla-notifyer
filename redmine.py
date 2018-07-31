@@ -103,9 +103,10 @@ class Request(object):
 
 class RedmineClient(object):
 
-    def __init__(self, config):
+    def __init__(self, config, debug=False):
         super(RedmineClient, self).__init__()
         self._config = config
+        self._debug = debug
         self.on_init()
 
     def on_init(self):
@@ -115,7 +116,6 @@ class RedmineClient(object):
         return self._config[section][param]
 
     def _do_request(self, resource, params=None, offset=None, limit=None):
-        # print 'DEBUG _do_request:', resource, params, offset, limit
         _request = Request(self._get_cfg('redmine', 'url'), resource, params, offset, limit)
         # logging.debug('_do_request: %s' % _request.url())
         req = urllib2.Request(url=_request.url())
@@ -128,7 +128,8 @@ class RedmineClient(object):
         except urllib2.URLError as e:
             logging.error(e)
             return {}
-        _debug_response(response, _request.url())
+        if self._debug:
+            _debug_response(response, _request.url())
         return json.loads(response)
 
     def _get_data(self, resource, params=None):

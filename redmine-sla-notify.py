@@ -130,6 +130,33 @@ class Redmine(RedmineClient):
         return self.users
 
 
+def issue_get_rcpt(_issue):
+    emails = {}
+    for notify_role in _issue['time_window']['notify']:
+        if notify_role in roles:
+            users = roles[notify_role]['users']
+            for mail in users:
+                emails[mail] = ''
+    return ', '.join(str('%s' % item) for item in emails)
+
+
+def issue_get_notify_roles(_issue):
+    return ', '.join(unicode(u'%s' % item) for item in _issue['time_window']['notify'])
+
+
+def issue_log_info(issue):
+    # print json.dumps(issue, indent=2, ensure_ascii=False)
+    logging.info(u'[%i] %s' % (issue['id'], issue['subject']))
+    logging.info(u'[%i] Priority: %s' % (issue['id'], issue['priority']))
+    logging.info(u'[%i] Project: %s' % (issue['id'], issue['project']['name']))
+    logging.info(u'[%i] SLA: %s' % (issue['id'], issue['project']['sla']))
+    logging.info(
+        u'[%i] Time after creation: %s' % (issue['id'], issue['time_after_creation']))
+    logging.info(u'[%i] Time window: %s' % (issue['id'], issue['time_window']['name']))
+    logging.info(u'[%i] Notify roles: %s' % (issue['id'], issue['notify_roles']))
+    logging.info(u'[%i] Rcpt: %s' % (issue['id'], issue['rcpt']))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROG +'.conf'))
@@ -165,46 +192,27 @@ if __name__ == "__main__":
 
     for project in rm.get_projects_with_sla():
         roles = rm.get_memberships(project['id'])
-        logging.debug('### Project: #%i %s ###' % (project['id'], project['name']))
+        logging.debug('Project: #%i %s ###' % (project['id'], project['name']))
         for issue in rm.get_issues(project['id']):
             if issue['project_id'] == project['id']:
-                _debug(issue)
-                time_window = sla.in_time_window(project['sla'], issue['priority'], issue['created_on'])
-                if time_window:
-                    if history.not_sent(issue['id'], time_window['name']):
-                        notify_roles = ', '.join(unicode(u'%s' % item) for item in time_window['notify'])
-                        logging.debug('Issue #%i %s notify: [%s]' % (issue['id'], time_window['name'], notify_roles))
-                        if notify_roles:
-                            emails = {}
-                            for notify_role in time_window['notify']:
-                                if notify_role in roles:
-                                    users = roles[notify_role]['users']
-                                    for mail in users:
-                                        emails[mail] = ''
-                            rcpt = ', '.join(str('%s' % item) for item in emails)
-
-                            logging.info(u'[%i] %s' % (issue['id'], issue['subject']))
-                            logging.info(u'[%i] Priority: %s' % (issue['id'], issue['priority']))
-                            logging.info(u'[%i] Project: %s' % (issue['id'], project['name']))
-                            logging.info(u'[%i] SLA: %s' % (issue['id'], project['sla']))
-                            logging.info(
-                                u'[%i] Time after creation: %s' % (issue['id'], time_diff(issue['created_on'], False)))
-                            logging.info(u'[%i] Time window: %s' % (issue['id'], time_window['name']))
-                            logging.info(u'[%i] Notify roles: %s' % (issue['id'], notify_roles))
-
-                            if sendmail.send(
-                                    rcpt=rcpt,
-                                    issue_id=issue['id'],
-                                    issue_name=issue['subject'],
-                                    priority=issue['priority'],
-                                    project=project['name'],
-                                    sla=project['sla'],
-                                    time_after_creation=time_diff(issue['created_on'], False),
-                                    time_window=time_window['name'],
-                                    notify_roles=notify_roles
-                                         ):
-                                history.sent(issue['id'], time_window['name'])
-                                logging.info('[%i] Email notifications sent to: %s' % (issue['id'], rcpt))
+                # _debug(issue)
+                issue['time_window'] = sla.in_time_window(project['sla'], issue['priority'], issue['created_on'])
+                if issue['time_window']:
+                    if history.not_sent(issue['id'], issue['time_window']['name']):
+                        issue['notify_roles'] = issue_get_notify_roles(issue)
+                        logging.debug('Issue #%i %s notify: [%s]' % (
+                                issue['id'],
+                                issue['time_window']['name'],
+                                issue['notify_roles'])
+                            )
+                        if issue['notify_roles']:
+                            issue['rcpt'] = issue_get_rcpt(issue)
+                            issue['project'] = project
+                            issue['time_after_creation'] = time_diff(issue['created_on'], False)
+                            issue_log_info(issue)
+                            if sendmail.send(issue=issue):
+                                history.sent(issue['id'], issue['time_window']['name'])
+                                logging.info('[%i] Email notifications sent to: %s' % (issue['id'], issue['rcpt']))
                     else:
-                        logging.debug('#%i SLA: %s - in history' % (issue['id'], time_window['name']))
+                        logging.debug('Issue #%i SLA: %s - in history' % (issue['id'], issue['time_window']['name']))
     logging.debug("END")

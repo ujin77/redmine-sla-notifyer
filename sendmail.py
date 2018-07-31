@@ -51,20 +51,22 @@ TEMPLATE = u"""
 
 class Sendmail(object):
 
-    def __init__(self, config):
+    def __init__(self, config, debug=False):
         super(Sendmail, self).__init__()
         self._config = config
+        self._debug = debug
         self.template = Template(TEMPLATE, trim_blocks=True)
 
     def _send(self, rcpt, html, subject=None):
         _msg = MIMEMultipart('alternative', None, [MIMEText(html, 'html', 'utf-8')])
-        _msg['Subject'] = self._config['subject'] + subject
+        _msg['Subject'] = '%s %s' % (self._config['subject'], subject)
         _msg['From'] = self._config['from']
         _msg['To'] = rcpt
         server = None
         try:
             server = smtplib.SMTP_SSL(self._config['host'], self._config['port'])
-            # server.set_debuglevel(1)
+            if self._debug:
+                server.set_debuglevel(1)
             server.login(self._config['user'], self._config['password'])
             server.sendmail(self._config['from'], rcpt.split(','), _msg.as_string())
             server.quit()
@@ -83,16 +85,15 @@ class Sendmail(object):
             return False
         return True
 
-    def send(self, rcpt, issue_id, issue_name, priority, project, sla, time_after_creation, time_window, notify_roles):
-        return self._send(rcpt, self.template.render(
+    def send(self, issue):
+        return self._send(issue['rcpt'], self.template.render(
             url=self._config['url'],
-            issue_id=issue_id,
-            issue_name=issue_name,
-            priority=priority,
-            project=project,
-            sla=sla,
-            time_after_creation=time_after_creation,
-            time_window=time_window,
-            notify_roles=notify_roles),
-                          ' ' + issue_name
+            issue_id=issue['id'],
+            issue_name=issue['subject'],
+            priority=issue['priority'],
+            project=issue['project']['name'],
+            sla=issue['project']['sla'],
+            time_after_creation=issue['time_after_creation'],
+            time_window=issue['time_window']['name'],
+            notify_roles=issue['notify_roles']), issue['subject']
         )
