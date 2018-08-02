@@ -58,11 +58,17 @@ class Sendmail(object):
         self._debug = debug
         self.template = Template(TEMPLATE, trim_blocks=True)
 
-    def _send(self, rcpt, html, subject=None):
+    def _send(self, rcpt, html, _subject=None, _headers=None):
         _msg = MIMEMultipart('alternative', None, [MIMEText(html, 'html', 'utf-8')])
-        _msg['Subject'] = '%s %s' % (self._config['subject'], subject)
         _msg['From'] = self._config['from']
         _msg['To'] = rcpt
+        if _subject:
+            _msg['Subject'] = '%s %s' % (self._config['subject'], _subject)
+        else:
+            _msg['Subject'] = self._config['subject']
+        if _headers:
+            for k, v in _headers.iteritems():
+                _msg[k] = v
         server = None
         try:
             server = smtplib.SMTP_SSL(self._config['host'], self._config['port'])
@@ -88,13 +94,15 @@ class Sendmail(object):
 
     def send(self, issue):
         return self._send(issue['rcpt'], self.template.render(
-            url=self._config['url'],
-            issue_id=issue['id'],
-            issue_name=issue['subject'],
-            priority=issue['priority'],
-            project=issue['project']['name'],
-            sla=issue['project']['sla'],
-            time_after_creation=issue['time_after_creation'],
-            time_window=issue['time_window']['name'],
-            notify_roles=issue['notify_roles']), issue['subject']
+                url=self._config['url'],
+                issue_id=issue['id'],
+                issue_name=issue['subject'],
+                priority=issue['priority'],
+                project=issue['project']['name'],
+                sla=issue['project']['sla'],
+                time_after_creation=issue['time_after_creation'],
+                time_window=issue['time_window']['name'],
+                notify_roles=issue['notify_roles']),
+            issue['subject'],
+            issue['time_window']['mail_headers'] if 'mail_headers' in issue['time_window'] else None
         )
