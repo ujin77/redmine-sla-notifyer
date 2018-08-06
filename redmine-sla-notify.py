@@ -146,7 +146,7 @@ def issue_get_notify_roles(_issue):
 
 def issue_log_info(_issue):
     # print json.dumps(_issue, indent=2, ensure_ascii=False)
-    logging.info(u'[%i] %s' % (_issue['id'], _issue['subject']))
+    logging.info(u'[%i] Issue: %s' % (_issue['id'], _issue['subject']))
     logging.info(u'[%i] Created: %s' % (_issue['id'], _issue['created_on']))
     logging.info(u'[%i] Priority: %s' % (_issue['id'], _issue['priority']))
     logging.info(u'[%i] Project: %s' % (_issue['id'], _issue['project']['name']))
