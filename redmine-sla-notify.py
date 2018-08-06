@@ -160,7 +160,7 @@ def issue_log_info(_issue):
 
 def issue_log_debug(_issue, _msg=''):
     # print json.dumps(_issue, indent=2, ensure_ascii=False)
-    logging.debug(u'[%i] %s' % (_issue['id'], _issue['subject']))
+    logging.debug(u'[%i] Issue: %s' % (_issue['id'], _issue['subject']))
     logging.debug(u'[%i] Created: %s' % (_issue['id'], _issue['created_on']))
     logging.debug(u'[%i] Priority: %s' % (_issue['id'], _issue['priority']))
     logging.debug(u'[%i] Project: %s' % (_issue['id'], _issue['project']['name']))
