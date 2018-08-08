@@ -9,6 +9,7 @@ import time
 import re
 import os
 import logging
+import io
 
 
 DEFAULT_BATCH_LIMIT = 100
@@ -55,9 +56,19 @@ def time_diff(date_string, minutes=True):
         return delta_to_str(td)
 
 
+def time_percent(hours, percent):
+    return int(hours * percent * 0.6)
+
+
 def delta_to_str(td):
     return re.match(r'(.*):\d+\.\d+$', str(td)).group(1)
     # return re.match(r'(.*)\:\d+\.\d+$', str(td)).group(1)
+
+
+def json_to_file(filename, obj):
+    with io.open(filename, 'w', encoding='utf8') as json_file:
+        json_file.write(unicode(json.dumps(obj, ensure_ascii=False, indent=2)))
+        json_file.close()
 
 
 def _debug_value(data, key=''):

@@ -6,7 +6,7 @@ import os
 import sys
 import json
 import ConfigParser
-from redmine import SLA, RedmineClient, time_diff
+from redmine import RedmineClient, time_diff, time_percent, date_from_redmine, BusinessTime
 from db import HistoryDB
 from sendmail import Sendmail
 import logging
@@ -15,8 +15,6 @@ import argparse
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 PROGRAM = os.path.splitext(os.path.basename(__file__))[0]
-
-
 CONFIG = {
     'mail': {
         'to': 'test@domain.local',
@@ -70,8 +68,32 @@ def load_json(f_name):
 
 class Redmine(RedmineClient):
 
-    def on_init(self):
-        self._get_users()
+    business_time = BusinessTime(None)
+
+    def _calc_sla_persent(self):
+        for _sla_name in self._config['sla']:
+            for _priority_name in self._config['sla'][_sla_name]:
+                for i in range(len(self._config['sla'][_sla_name][_priority_name]['time_windows'])):
+                    self._config['sla'][_sla_name][_priority_name]['time_windows'][i]['minutes'] = time_percent(
+                        self._config['sla'][_sla_name][_priority_name]['time_of_processing'],
+                        self._config['sla'][_sla_name][_priority_name]['time_windows'][i]['percent']
+                    )
+
+    def in_time_window(self, _project, _issue):
+        current_time_window = None
+
+        if 'nbd' in _project['priority'][_issue['priority']] and _project['priority'][_issue['priority']]['nbd']:
+            # print "NBD", _issue['priority']
+            minutes = self.business_time.getminutes(date_from_redmine(_issue['created_on'], True))
+        else:
+            # print "###", _issue['priority']
+            minutes = time_diff(_issue['created_on'])
+        for time_window in _project['priority'][_issue['priority']]['time_windows']:
+            if minutes >= time_window['minutes']:
+                current_time_window = time_window
+            if minutes < time_window['minutes']:
+                return current_time_window
+        return current_time_window
 
     def get_projects_with_sla(self):
         project_sla = []
@@ -91,16 +113,18 @@ class Redmine(RedmineClient):
         opened_issues = []
         for _issue in self.get('issues', {'project_id': project_id, 'status_id': 'open'}):
             # print json.dumps(issue, indent=2, ensure_ascii=False)
-            opened_issues.append({
-                'id': _issue['id'],
-                'project_id': _issue['project']['id'],
-                'subject': _issue['subject'],
-                'status': _issue['status']['name'],
-                'priority': _issue['priority']['name'],
-                'author': _issue['author']['name'],
-                'assigned_to': _issue['assigned_to']['name'] if 'assigned_to' in _issue else None,
-                'created_on': _issue['created_on']
-            })
+            if _issue['project']['id'] == project_id:
+                opened_issues.append({
+                    'id': _issue['id'],
+                    'project_id': _issue['project']['id'],
+                    'project_name': _issue['project']['name'],
+                    'subject': _issue['subject'],
+                    'status': _issue['status']['name'],
+                    'priority': _issue['priority']['name'],
+                    'author': _issue['author']['name'],
+                    'assigned_to': _issue['assigned_to']['name'] if 'assigned_to' in _issue else None,
+                    'created_on': _issue['created_on']
+                })
         return opened_issues
 
     def get_memberships(self, project_id):
@@ -130,49 +154,121 @@ class Redmine(RedmineClient):
     def get_users(self):
         return self.users
 
+    def get_projects(self):
+        _projects = hdb.get_cache(int(self._config['main']['cache_time']))
+        if not _projects:
+            logging.info("Update cache")
+            self._calc_sla_persent()
+            self._get_users()
+            _projects = self.get_projects_with_sla()
+            for _project in _projects:
+                _roles = self.get_memberships(_project['id'])
+                _project['priority'] = self._config['sla'][_project['sla']]
+                for _priority_name in _project['priority']:
+                    for time_window in _project['priority'][_priority_name]['time_windows']:
+                        _notify_names = time_window['notify']
+                        time_window['notify'] = {}
+                        for _notify_name in _notify_names:
+                            if _notify_name in _roles:
+                                time_window['notify'][_notify_name] = _roles[_notify_name]['users']
+            hdb.write_cache(_projects)
+        return _projects
 
-def issue_get_rcpt(_issue, _roles):
-    emails = {}
-    for notify_role in _issue['time_window']['notify']:
-        if notify_role in _roles:
-            for _mail in _roles[notify_role]['users']:
-                emails[_mail] = ''
-    return ', '.join(str('%s' % item) for item in emails)
 
-
-def issue_get_notify_roles(_issue):
-    return ', '.join(unicode(u'%s' % item) for item in _issue['time_window']['notify'])
+def issue_get_notify_roles(_time_window):
+    return ', '.join(unicode(u'%s' % item) for item in _time_window['notify'])
 
 
 def issue_log_info(_issue):
     # print json.dumps(_issue, indent=2, ensure_ascii=False)
-    logging.info(u'[%i] Subject: %s' % (_issue['id'], _issue['subject']))
-    logging.info(u'[%i] Created: %s' % (_issue['id'], _issue['created_on']))
-    logging.info(u'[%i] Priority: %s' % (_issue['id'], _issue['priority']))
-    logging.info(u'[%i] Project: %s' % (_issue['id'], _issue['project']['name']))
-    logging.info(u'[%i] SLA: %s' % (_issue['id'], _issue['project']['sla']))
-    logging.info(
-        u'[%i] Time after creation: %s' % (_issue['id'], _issue['time_after_creation']))
-    logging.info(u'[%i] Time window: %s' % (_issue['id'], _issue['time_window']['name']))
-    logging.info(u'[%i] Notify roles: %s' % (_issue['id'], _issue['notify_roles']))
-    logging.info(u'[%i] Rcpt: %s' % (_issue['id'], _issue['rcpt']))
+    for k, v in _issue.iteritems():
+        if isinstance(v, dict):
+            info = ', '.join(unicode(u'%s (%s)' % (item, val)) for item, val in v.iteritems())
+            v = info
+        logging.info(u'[%i] %s: %s' % (_issue['id'], k, v))
 
 
 def issue_log_debug(_issue, _msg=''):
     # print json.dumps(_issue, indent=2, ensure_ascii=False)
-    logging.debug(u'[%i] Subject: %s' % (_issue['id'], _issue['subject']))
-    logging.debug(u'[%i] Created: %s' % (_issue['id'], _issue['created_on']))
-    logging.debug(u'[%i] Priority: %s' % (_issue['id'], _issue['priority']))
-    logging.debug(u'[%i] Project: %s' % (_issue['id'], _issue['project']['name']))
-    logging.debug(u'[%i] SLA: %s' % (_issue['id'], _issue['project']['sla']))
-    if 'time_after_creation' in _issue:
-        logging.debug(u'[%i] Time after creation: %s' % (_issue['id'], _issue['time_after_creation']))
-    logging.debug(u'[%i] Time window: %s' % (_issue['id'], _issue['time_window']['name']))
-    if 'notify_roles' in _issue:
-        logging.debug(u'[%i] Notify roles: %s' % (_issue['id'], _issue['notify_roles']))
-    if 'rcpt' in _issue:
-        logging.debug(u'[%i] Rcpt: %s' % (_issue['id'], _issue['rcpt']))
+    for k, v in _issue.iteritems():
+        logging.debug(u'[%i] %s: %s' % (_issue['id'], k, v))
     logging.debug(u'[%i] %s' % (_issue['id'], _msg))
+
+
+def run_notify(_conf, reset_history=False, test_mail=False):
+    if reset_history:
+        logging.debug("Reset history")
+        hdb.reset()
+    rm = Redmine(_conf)
+    mail = Sendmail(_conf['mail'])
+    for project in rm.get_projects():
+        for issue in rm.get_issues(project['id']):
+            time_window = rm.in_time_window(project, issue)
+            if time_window:
+                if hdb.not_sent(issue['id'], time_window['name']):
+                    issue['rcpt'] = {}
+                    for role_name in time_window['notify']:
+                        for rcpt_to, rcpt_name in time_window['notify'][role_name].iteritems():
+                            issue['rcpt'][rcpt_to] = rcpt_name
+                    if issue['rcpt']:
+                        issue['project_sla'] = project['sla']
+                        issue['time_window'] = time_window['name']
+                        issue['time_after_creation'] = time_diff(issue['created_on'], False)
+                        issue['created_on_local'] = str(date_from_redmine(issue['created_on'], True))
+                        issue['notify_roles'] = issue_get_notify_roles(time_window)
+                        issue['important'] = time_window['important'] if 'important' in time_window else False
+                        issue_log_info(issue)
+                        if test_mail:
+                            logging.debug("Send test to %s" % _conf['main']['test_email'])
+                            issue['rcpt'] = _conf['main']['test_email']
+                        if mail.send_issue(issue=issue, important=issue['important']):
+                            hdb.sent(issue['id'], issue['time_window'])
+                        # print "### ISSUE", json.dumps(issue, ensure_ascii=False, indent=2)
+                    else:
+                        issue_log_debug(issue, 'No notify roles!')
+                else:
+                    issue_log_debug(issue, 'In history!')
+
+
+def run_report(_conf, test_mail=False):
+    rm = Redmine(_conf)
+    mail = Sendmail(_conf['mail'], template_report=True)
+    projects = []
+    for project in rm.get_projects():
+        project_report = {
+            'id': project['id'],
+            'identifier': project['identifier'],
+            'name': project['name'],
+            'sla': project['sla'],
+            'issues': []
+        }
+        for issue in rm.get_issues(project['id']):
+            time_window = rm.in_time_window(project, issue)
+            if time_window:
+                if time_window['percent'] == 100:
+                    issue['project_sla'] = project['sla']
+                    issue['time_window'] = time_window['name']
+                    issue['time_after_creation'] = time_diff(issue['created_on'], False)
+                    issue['created_on_local'] = str(date_from_redmine(issue['created_on'], True))
+                    project_report['issues'].append(issue)
+        if project_report['issues']:
+            projects.append(project_report)
+    rcpt = _conf['main']['report_email']
+    if test_mail:
+        rcpt = _conf['main']['test_email']
+    if projects:
+        logging.info("Send report to %s" % rcpt)
+        mail.send_report(rcpt, projects)
+    else:
+        logging.info("Nothing to report")
+    # json_to_file('cache.json', rm.get_projects())
+
+
+def print_history():
+    # print hdb.get_last_update()
+    print "| id | sla"
+    for (i, s) in hdb.get_history():
+        print '| %2i | %s' % (i, s)
 
 
 if __name__ == "__main__":
@@ -180,7 +276,11 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROGRAM + '.conf'))
     parser.add_argument('-s', '--sla-file', default=os.path.join(PATH, 'sla.json'))
     parser.add_argument('-l', '--log-conf-file', default=os.path.join(PATH, 'logging.conf'))
-    parser.add_argument('-r', '--reset-history', action='store_true', help="Reset history")
+    parser.add_argument('-d', '--delete-history', action='store_true', help="Reset(delete) history")
+    parser.add_argument('-r', '--report', action='store_true', help="Report")
+    parser.add_argument('-t', '--test', action='store_true', help="Send test mail")
+    parser.add_argument('--history', action='store_true', help="Print hisory")
+
     args = parser.parse_args()
 
     if os.path.isfile(args.log_conf_file):
@@ -198,34 +298,12 @@ if __name__ == "__main__":
         logging.error("The SLA configuration is not specified")
         parser.print_help()
         sys.exit(0)
-
-    sla = SLA(load_json(args.sla_file))
-    history = HistoryDB(file_path('history.db'))
-    if args.reset_history:
-        history.reset()
-    # history.reset()
-    mail = Sendmail(CONFIG['mail'])
-
-    rm = Redmine(CONFIG)
-
-    for project in rm.get_projects_with_sla():
-        roles = rm.get_memberships(project['id'])
-        logging.debug('Project: #%i %s ###' % (project['id'], project['name']))
-        for issue in rm.get_issues(project['id']):
-            if issue['project_id'] == project['id']:
-                issue['time_window'] = sla.in_time_window(project['sla'], issue['priority'], issue['created_on'])
-                if issue['time_window']:
-                    issue['project'] = project
-                    if history.not_sent(issue['id'], issue['time_window']['name']):
-                        issue['notify_roles'] = issue_get_notify_roles(issue)
-                        if issue['notify_roles']:
-                            issue['rcpt'] = issue_get_rcpt(issue, roles)
-                            issue['time_after_creation'] = time_diff(issue['created_on'], False)
-                            issue_log_info(issue)
-                            if mail.send(issue=issue):
-                                history.sent(issue['id'], issue['time_window']['name'])
-                        else:
-                            issue_log_debug(issue, 'no notify roles')
-                    else:
-                        issue_log_debug(issue, 'in history')
+    CONFIG['sla'] = load_json(args.sla_file)
+    hdb = HistoryDB(file_path('history.db'))
+    if args.report:
+        run_report(CONFIG)
+    elif args.history:
+        print_history()
+    else:
+        run_notify(CONFIG, args.delete_history, args.test)
     logging.debug("END")
