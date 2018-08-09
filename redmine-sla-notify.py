@@ -254,7 +254,7 @@ def run_report(_conf, test_mail=False, full_report=False):
                     project_report['issues'].append(issue)
         if project_report['issues']:
             projects.append(project_report)
-    rcpt = _conf['main']['test_email']
+    rcpt = _conf['main']['report_email']
     if test_mail:
         rcpt = _conf['main']['test_email']
     if projects:
