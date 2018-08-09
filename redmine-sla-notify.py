@@ -279,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--log-conf-file', default=os.path.join(PATH, 'logging.conf'))
     parser.add_argument('-r', '--reset-history', action='store_true', help="Reset(delete) history")
     parser.add_argument('--report', action='store_true', help="Report")
-    parser.add_argument('--full-report', action='store_true', help="Report")
+    parser.add_argument('--full-report', action='store_true', help="Full Report")
     parser.add_argument('--test', action='store_true', help="Send test mail")
     parser.add_argument('--history', action='store_true', help="Print hisory")
 
