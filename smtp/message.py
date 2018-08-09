@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.audio import MIMEAudio
+from email.mime.base import MIMEBase
+from email.mime.image import MIMEImage
 from email.header import Header
+from email import encoders
 
 
 def _is_ascii(s):
@@ -52,25 +56,29 @@ class Message(object):
             ValueError: on invalid arguments
         """
         self.mail_to = []
-        self._message = MIMEMultipart('alternative')
-        self.attach(opts.get('text'), 'plain')
-        self.attach(opts.get('html'), 'html')
+        # self._headers = {}
+        self._headers = opts.get('headers', {})
+        self.attachments = []
+        # self._message = MIMEMultipart('alternative')
+        # self._message = MIMEMultipart()
+        # self.attach(opts.get('text'), 'plain')
+        # self.attach(opts.get('html'), 'html')
+        # self.attachments.append({'file': 'data.html', 'data': opts.get('html')})
+        self._html = opts.get('html')
+        self._text = opts.get('text')
         self._important = opts.get('important', False)
         self._from(_from)
         self._to(_to)
         self._subject(subject)
-        self._headers = opts.get('headers')
 
         # self.reply_to = ''
         # self.to = []
         # self.cc = []
         # self.bcc = []
-        # self.headers = {}
-        # self.attachments = []
 
-    def attach(self, _text, _subtype='plain'):
-        if _text:
-            self._message.attach(MIMEText(_text, _subtype, 'utf-8'))
+    # def attach(self, _text, _subtype='plain'):
+    #     if _text:
+    #         self._message.attach(MIMEText(_text, _subtype, 'utf-8'))
 
     def _from(self, mail_from):
         if mail_from:
@@ -108,18 +116,69 @@ class Message(object):
         self.add_header('To', ', '.join(self.mail_to))
 
     def add_header(self, name, value):
-        self._message[name] = value
+        self._headers[name] = value
 
     def add_headers(self, headers):
-        self._headers = headers
+        if isinstance(headers, dict):
+            self._headers.update(headers)
+
+    def _get_attach_mime(self, attach):
+        """
+        Get a MIME part from the given file uploaded
+        """
+        filename = attach['file']
+        data = attach['data']
+        ctype = attach['ctype']
+        encoding = attach['encoding'] if 'encoding' in attach else 'utf-8'
+        maintype, subtype = ctype.split('/', 1)
+        if maintype == 'text':
+            msg = MIMEText(data, _subtype=subtype, _charset=encoding)
+        elif maintype == 'image':
+            msg = MIMEImage(data, _subtype=subtype)
+        elif maintype == 'audio':
+            msg = MIMEAudio(data, _subtype=subtype)
+        else:
+            msg = MIMEBase(maintype, subtype)
+            msg.set_payload(data)
+            encoders.encode_base64(msg)
+
+        if attach.get('cid', False):
+            msg.add_header('Content-ID', '<%s>' % attach['cid'])
+        else:
+            msg.add_header('Content-Disposition', 'attachment', filename=filename)
+
+        return msg
+
+    def add_attachment(self, filename, data, ctype='text/plain', cid=None):
+        """
+        Add attachment to email
+
+        Args:
+            filename: name of the file as seen in email
+            data: data string
+            ctype: Content-Type
+            cid: Content-ID header, optional
+
+        Returns:
+            self
+        """
+        self.attachments.append({'file': filename, 'data': data, 'ctype': ctype, 'cid': cid})
 
     def as_string(self):
+        _message = MIMEMultipart()
         if self._important:
             self.add_header("Importance", "High")
             self.add_header("X-MSMail-Priority", "High")
             self.add_header("X-Priority", "1 (Highest)")
-        if isinstance(self._headers, dict):
-            for _header, _value in self._headers.iteritems():
-                self.add_header(_header, _encode_header(_value))
-
-        return self._message.as_string()
+        for _header in sorted(self._headers):
+            _message[_header] = _encode_header(self._headers[_header])
+        if self._html:
+            _message.attach(MIMEText(self._html, 'html', 'utf-8'))
+        if self._text:
+            _message.attach(MIMEText(self._text, 'plain', 'utf-8'))
+        if self.attachments:
+            for attach in self.attachments:
+                f = self._get_attach_mime(attach)
+                if f:
+                    _message.attach(f)
+        return _message.as_string()

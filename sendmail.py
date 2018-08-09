@@ -1,15 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
-# import smtplib
-# from email.mime.multipart import MIMEMultipart
-# from email.mime.text import MIMEText
 from jinja2 import Environment, FileSystemLoader
 # import logging
-# import json
+import json
 import os
 from smtp import SMTP
 from smtp.message import Message
+from redmine import CSV
 
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
@@ -17,6 +15,20 @@ MAIL_HEADERS = {
     'X-Mailer': 'Redmine',
     'X-Auto-Response-Suppress': 'All',
     'Auto-Submitted': 'auto-generated'
+}
+
+CSV_FIELDS = {
+    "project_name": "Project",
+    "project_sla": "Project SLA",
+    "id": "Issue ID",
+    "subject": "Issue",
+    "priority": "Priority",
+    "status": "Status",
+    "author": "Author",
+    "created_on_local": "Created",
+    "assigned_to": "Assigned",
+    "time_window": "SLA",
+    "time_after_creation": "Time after creation"
 }
 
 
@@ -61,8 +73,16 @@ class Sendmail(object):
     def send_report(self, rcpt, data, important=False):
         if not self._report:
             return False
-        return self._send(rcpt, self.template.render(
-            projects=data,
-            url=self._config['url']),
-                          important=important
-                          )
+        csv = CSV()
+        csv.add([CSV_FIELDS[item] for item in CSV_FIELDS])
+        for project in data:
+            for issue in project['issues']:
+                csv.add([issue[item] for item in CSV_FIELDS])
+        _subject = self._config['subject']
+        _html = self.template.render(projects=data, url=self._config['url'])
+        _msg = Message(rcpt, _subject, self._config['from'], html=_html, important=important, headers=MAIL_HEADERS)
+        _msg.add_attachment('report.csv', csv.get(), 'text/csv')
+        # print _msg.as_string()
+        # return True
+        return self._smtp.send(_msg)
+

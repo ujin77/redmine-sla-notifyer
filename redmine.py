@@ -10,6 +10,9 @@ import re
 import os
 import logging
 import io
+import csv
+import codecs
+    # , io, codecs, cStringIO
 
 
 DEFAULT_BATCH_LIMIT = 100
@@ -354,3 +357,21 @@ class SLA(object):
     #         return self.in_time_window(sla_name, minutes)['notify']
     #     else:
     #         return None
+
+
+def _encode_csv(data):
+    return data.encode("utf-8") if isinstance(data, unicode) else data
+
+
+class CSV(object):
+
+    def __init__(self):
+        super(CSV, self).__init__()
+        self.output = io.BytesIO()
+        self.writer = csv.writer(self.output, dialect=csv.excel)
+
+    def add(self, data):
+        self.writer.writerow([_encode_csv(s) for s in data])
+
+    def get(self):
+        return codecs.BOM_UTF8 + self.output.getvalue()
