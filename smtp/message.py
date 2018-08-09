@@ -59,6 +59,7 @@ class Message(object):
         self._from(_from)
         self._to(_to)
         self._subject(subject)
+        self._headers = opts.get('headers')
 
         # self.reply_to = ''
         # self.to = []
@@ -97,8 +98,8 @@ class Message(object):
             for recipient in recipients.split(','):
                 self.mail_to.append(recipient.strip())
         elif isinstance(recipients, dict):
-            for k in recipients:
-                self.mail_to.append(k)
+            for k, v in recipients.iteritems():
+                self.mail_to.append('%s <%s>' % (_encode_header(v), k))
         elif isinstance(recipients, tuple):
             for recipient in recipients:
                 self.mail_to.append(recipient)
@@ -109,9 +110,16 @@ class Message(object):
     def add_header(self, name, value):
         self._message[name] = value
 
+    def add_headers(self, headers):
+        self._headers = headers
+
     def as_string(self):
         if self._important:
             self.add_header("Importance", "High")
             self.add_header("X-MSMail-Priority", "High")
             self.add_header("X-Priority", "1 (Highest)")
+        if isinstance(self._headers, dict):
+            for _header, _value in self._headers.iteritems():
+                self.add_header(_header, _encode_header(_value))
+
         return self._message.as_string()

@@ -13,6 +13,11 @@ from smtp.message import Message
 
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+MAIL_HEADERS = {
+    'X-Mailer': 'Redmine',
+    'X-Auto-Response-Suppress': 'All',
+    'Auto-Submitted': 'auto-generated'
+}
 
 
 class Sendmail(object):
@@ -34,7 +39,7 @@ class Sendmail(object):
             _subject = '%s %s' % (self._config['subject'], _subject)
         else:
             _subject = self._config['subject']
-        _msg = Message(rcpt, _subject, self._config['from'], html=html, important=important)
+        _msg = Message(rcpt, _subject, self._config['from'], html=html, important=important, headers=MAIL_HEADERS)
         # print _msg.as_string()
         # return True
         return self._smtp.send(_msg)

@@ -230,7 +230,7 @@ def run_notify(_conf, reset_history=False, test_mail=False):
                     issue_log_debug(issue, 'In history!')
 
 
-def run_report(_conf, test_mail=False):
+def run_report(_conf, test_mail=False, full_report=False):
     rm = Redmine(_conf)
     mail = Sendmail(_conf['mail'], template_report=True)
     projects = []
@@ -245,15 +245,16 @@ def run_report(_conf, test_mail=False):
         for issue in rm.get_issues(project['id']):
             time_window = rm.in_time_window(project, issue)
             if time_window:
-                if time_window['percent'] == 100:
+                if time_window['percent'] == 100 or full_report:
                     issue['project_sla'] = project['sla']
                     issue['time_window'] = time_window['name']
                     issue['time_after_creation'] = time_diff(issue['created_on'], False)
                     issue['created_on_local'] = str(date_from_redmine(issue['created_on'], True))
+                    issue['important'] = time_window['important'] if 'important' in time_window else False
                     project_report['issues'].append(issue)
         if project_report['issues']:
             projects.append(project_report)
-    rcpt = _conf['main']['report_email']
+    rcpt = _conf['main']['test_email']
     if test_mail:
         rcpt = _conf['main']['test_email']
     if projects:
@@ -276,9 +277,10 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROGRAM + '.conf'))
     parser.add_argument('-s', '--sla-file', default=os.path.join(PATH, 'sla.json'))
     parser.add_argument('-l', '--log-conf-file', default=os.path.join(PATH, 'logging.conf'))
-    parser.add_argument('-d', '--delete-history', action='store_true', help="Reset(delete) history")
-    parser.add_argument('-r', '--report', action='store_true', help="Report")
-    parser.add_argument('-t', '--test', action='store_true', help="Send test mail")
+    parser.add_argument('-r', '--reset-history', action='store_true', help="Reset(delete) history")
+    parser.add_argument('--report', action='store_true', help="Report")
+    parser.add_argument('--full-report', action='store_true', help="Report")
+    parser.add_argument('--test', action='store_true', help="Send test mail")
     parser.add_argument('--history', action='store_true', help="Print hisory")
 
     args = parser.parse_args()
@@ -300,10 +302,10 @@ if __name__ == "__main__":
         sys.exit(0)
     CONFIG['sla'] = load_json(args.sla_file)
     hdb = HistoryDB(file_path('history.db'))
-    if args.report:
-        run_report(CONFIG)
+    if args.report or args.full_report:
+        run_report(CONFIG, test_mail=args.test, full_report=args.full_report)
     elif args.history:
         print_history()
     else:
-        run_notify(CONFIG, args.delete_history, args.test)
+        run_notify(CONFIG, args.reset_history, args.test)
     logging.debug("END")
