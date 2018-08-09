@@ -16,6 +16,7 @@
     <li><a href="{{ url }}/issues/{{ issue.id }}">#{{ issue.id }}: {{ issue.subject }}</a>
         <ul class="subdetails">
             <li><strong>Статус: </strong>{{ issue.status }}</li>
+            <li><strong>Приоритет: </strong>{{ issue.priority }}</li>
             <li{% if issue.important is defined and issue.important %}
                 class="important"
             {% endif %}><strong>Эскалация: </strong>{{ issue.time_window }}</li>
