@@ -6,7 +6,7 @@ import os
 import sys
 import json
 import ConfigParser
-from redmine import RedmineClient, time_diff, time_percent, date_from_redmine, BusinessTime, CSV
+from redmine import RedmineClient, time_diff, time_percent, date_from_redmine, BusinessTime
 from db import HistoryDB
 from sendmail import Sendmail
 import logging
@@ -157,7 +157,7 @@ class Redmine(RedmineClient):
     def get_projects(self):
         _projects = hdb.get_cache(int(self._config['main']['cache_time']))
         if not _projects:
-            logging.info("Update cache")
+            logging.debug("Update cache")
             self._calc_sla_persent()
             self._get_users()
             _projects = self.get_projects_with_sla()
@@ -230,21 +230,6 @@ def run_notify(_conf, reset_history=False, test_mail=False):
                     issue_log_debug(issue, 'In history!')
 
 
-def generate_csv(data):
-    # print json.dumps(data, ensure_ascii=False, indent=2)
-    csv = CSV()
-    for project in data:
-        for issue in project['issues']:
-            # print json.dumps(issue, ensure_ascii=False, indent=2)
-            csv.add([
-                issue['project_id'],
-                issue['project_name'],
-                issue['id'],
-                issue['subject']
-            ])
-    return csv.get()
-
-
 def run_report(_conf, test_mail=False, full_report=False):
     rm = Redmine(_conf)
     mail = Sendmail(_conf['mail'], template_report=True)
@@ -275,14 +260,12 @@ def run_report(_conf, test_mail=False, full_report=False):
     if projects:
         logging.info("Send report to %s" % rcpt)
         mail.send_report(rcpt, projects)
-        # print generate_csv(projects)
     else:
         logging.info("Nothing to report")
     # json_to_file('cache.json', rm.get_projects())
 
 
 def print_history():
-    # print hdb.get_last_update()
     print "| id | sla"
     for (i, s) in hdb.get_history():
         print '| %2i | %s' % (i, s)

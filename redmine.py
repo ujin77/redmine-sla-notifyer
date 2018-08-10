@@ -12,7 +12,6 @@ import logging
 import io
 import csv
 import codecs
-    # , io, codecs, cStringIO
 
 
 DEFAULT_BATCH_LIMIT = 100

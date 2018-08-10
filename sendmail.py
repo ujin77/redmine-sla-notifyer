@@ -3,7 +3,7 @@
 #
 from jinja2 import Environment, FileSystemLoader
 # import logging
-import json
+# import json
 import os
 from smtp import SMTP
 from smtp.message import Message
@@ -85,4 +85,3 @@ class Sendmail(object):
         # print _msg.as_string()
         # return True
         return self._smtp.send(_msg)
-
