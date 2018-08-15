@@ -17,6 +17,10 @@ import argparse
 PATH = os.path.dirname(os.path.abspath(__file__))
 PROGRAM = os.path.splitext(os.path.basename(__file__))[0]
 CONFIG = {
+    'main': {
+        'sla-file': 'sla.json',
+        'cache_time': 3600
+    },
     'mail': {
         'to': 'test@domain.local',
         'from': 'test@domain.local',
@@ -275,7 +279,7 @@ def print_history():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROGRAM + '.conf'))
-    parser.add_argument('-s', '--sla-file', default=os.path.join(PATH, 'sla.json'))
+    parser.add_argument('-s', '--sla-file')
     parser.add_argument('-l', '--log-conf-file', default=os.path.join(PATH, 'logging.conf'))
     parser.add_argument('-r', '--reset-history', action='store_true', help="Reset(delete) history")
     parser.add_argument('--report', action='store_true', help="Report")
@@ -292,15 +296,20 @@ if __name__ == "__main__":
 
     logging.debug("START")
     logging.debug('Config file: %s' % args.conf_file)
+    load_config(args.conf_file)
+
     logging.debug('SLA config file: %s' % args.sla_file)
     logging.debug('Log config file: %s' % args.log_conf_file)
+    if args.sla_file:
+        CONFIG['main']['sla-file'] = args.sla_file
 
-    load_config(args.conf_file)
-    if not os.path.isfile(args.sla_file):
+    if not os.path.isfile(CONFIG['main']['sla-file']):
         logging.error("The SLA configuration is not specified")
         parser.print_help()
         sys.exit(0)
-    CONFIG['sla'] = load_json(args.sla_file)
+
+    CONFIG['sla'] = load_json(CONFIG['main']['sla-file'])
+
     hdb = HistoryDB(file_path('history.db'))
     if args.report or args.full_report:
         run_report(CONFIG, test_mail=args.test, full_report=args.full_report)

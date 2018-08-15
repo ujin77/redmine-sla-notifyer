@@ -1,6 +1,6 @@
-#!/usr/bin/python
 # -*- coding: utf-8
 #
+
 import urllib2
 from urlparse import urljoin
 import json
@@ -12,7 +12,6 @@ import logging
 import io
 import csv
 import codecs
-
 
 DEFAULT_BATCH_LIMIT = 100
 
@@ -64,7 +63,6 @@ def time_percent(hours, percent):
 
 def delta_to_str(td):
     return re.match(r'(.*):\d+\.\d+$', str(td)).group(1)
-    # return re.match(r'(.*)\:\d+\.\d+$', str(td)).group(1)
 
 
 def json_to_file(filename, obj):
@@ -157,7 +155,6 @@ class RedmineClient(object):
         while record_count < total_count:
             res = self._do_request(resource, params, offset, limit)
             if res and response_name in res:
-                # print json.dumps(res, indent=2)
                 record_count = res['offset'] + res['limit']
                 total_count = res['total_count']
                 offset = record_count
@@ -315,7 +312,6 @@ class SLA(object):
                         self._config[sla_name][priority]['time_of_processing'],
                         self._config[sla_name][priority]['time_windows'][i]['percent']
                     )
-        # print json.dumps(self._config, indent=2, ensure_ascii=False)
 
     def _get_sla(self, name):
         if name in self._config:

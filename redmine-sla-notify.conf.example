@@ -1,3 +1,8 @@
+[main]
+test_email=test@domain.local
+report_email=test@domain.local
+cache_time=3600
+
 [redmine]
 url=http://localhost
 api-key=<key>
