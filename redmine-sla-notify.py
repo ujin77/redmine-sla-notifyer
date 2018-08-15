@@ -13,6 +13,7 @@ import logging
 from logging.config import fileConfig as logfileConfig
 import argparse
 
+
 PATH = os.path.dirname(os.path.abspath(__file__))
 PROGRAM = os.path.splitext(os.path.basename(__file__))[0]
 CONFIG = {
@@ -83,10 +84,10 @@ class Redmine(RedmineClient):
         current_time_window = None
 
         if 'nbd' in _project['priority'][_issue['priority']] and _project['priority'][_issue['priority']]['nbd']:
-            # print "NBD", _issue['priority']
+            # "NBD", _issue['priority']
             minutes = self.business_time.getminutes(date_from_redmine(_issue['created_on'], True))
         else:
-            # print "###", _issue['priority']
+            # "###", _issue['priority']
             minutes = time_diff(_issue['created_on'])
         for time_window in _project['priority'][_issue['priority']]['time_windows']:
             if minutes >= time_window['minutes']:

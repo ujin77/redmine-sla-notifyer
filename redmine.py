@@ -157,6 +157,7 @@ class RedmineClient(object):
         while record_count < total_count:
             res = self._do_request(resource, params, offset, limit)
             if res and response_name in res:
+                # print json.dumps(res, indent=2)
                 record_count = res['offset'] + res['limit']
                 total_count = res['total_count']
                 offset = record_count
@@ -170,6 +171,11 @@ class RedmineClient(object):
 
     def get(self, resource, params=None):
         return self._get_data(resource, params)
+
+    def get_current_user(self):
+        res = self._do_request('users/current')
+        if res and 'user' in res:
+            return res['user']
 
 
 class BusinessTime(object):
