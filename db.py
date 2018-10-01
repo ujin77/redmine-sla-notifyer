@@ -62,3 +62,11 @@ class HistoryDB(object):
             self.cur.execute('INSERT INTO cache VALUES (1, ?, "[]");', (time.time(),))
             self.commit()
             return None
+
+    def get_cache_dump(self):
+        self.cur.execute('SELECT last_update, js FROM cache;')
+        res = self.cur.fetchone()
+        if res:
+            return json.loads(res[1])
+        return None
+

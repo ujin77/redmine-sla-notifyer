@@ -276,6 +276,10 @@ def print_history():
         print '| %2i | %s' % (i, s)
 
 
+def print_cache():
+    print json.dumps(hdb.get_cache_dump(), ensure_ascii=False, indent=2)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROGRAM + '.conf'))
@@ -286,6 +290,7 @@ if __name__ == "__main__":
     parser.add_argument('--full-report', action='store_true', help="Full Report")
     parser.add_argument('--test', action='store_true', help="Send test mail")
     parser.add_argument('--history', action='store_true', help="Print hisory")
+    parser.add_argument('--view-cache', action='store_true', help="View cache")
 
     args = parser.parse_args()
 
@@ -313,6 +318,8 @@ if __name__ == "__main__":
     hdb = HistoryDB(file_path('history.db'))
     if args.report or args.full_report:
         run_report(CONFIG, test_mail=args.test, full_report=args.full_report)
+    elif args.view_cache:
+        print_cache()
     elif args.history:
         print_history()
     else:
