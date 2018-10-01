@@ -279,7 +279,7 @@ def print_history():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--conf-file', default=os.path.join(PATH, PROGRAM + '.conf'))
-    parser.add_argument('-s', '--sla-file', default=os.path.join(PATH, 'sla.json'))
+    parser.add_argument('-s', '--sla-file')
     parser.add_argument('-l', '--log-conf-file', default=os.path.join(PATH, 'logging.conf'))
     parser.add_argument('-r', '--reset-history', action='store_true', help="Reset(delete) history")
     parser.add_argument('--report', action='store_true', help="Report")

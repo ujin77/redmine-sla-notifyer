@@ -2,6 +2,7 @@
 test_email=test@domain.local
 report_email=test@domain.local
 cache_time=3600
+sla-file=sla.json
 
 [redmine]
 url=http://localhost
