@@ -292,72 +292,72 @@ class BusinessTime(object):
         return False
 
 
-class SLA(object):
-
-    @staticmethod
-    def _time_percent(hours, percent):
-        return int(hours * percent * 0.6)
-
-    def __init__(self, config):
-        super(SLA, self).__init__()
-        self._config = config
-        self._calc_persent()
-        self.business_time = BusinessTime(None)
-
-    def _calc_persent(self):
-        for sla_name in self._config:
-            for priority in self._config[sla_name]:
-                for i in range(len(self._config[sla_name][priority]['time_windows'])):
-                    self._config[sla_name][priority]['time_windows'][i]['minutes'] = self._time_percent(
-                        self._config[sla_name][priority]['time_of_processing'],
-                        self._config[sla_name][priority]['time_windows'][i]['percent']
-                    )
-
-    def _get_sla(self, name):
-        if name in self._config:
-            return self._config[name]
-        return None
-
-    def _get_priority(self, sla_name, name):
-        if sla_name in self._config:
-            if name in self._config[sla_name]:
-                return self._config[sla_name][name]
-            else:
-                if 'default' in self._config[sla_name]:
-                    return self._config[sla_name]['default']
-        return DEFAULT_PRIORITY
-
-    def _get_time_windows(self, sla_name, priority):
-        return self._get_priority(sla_name, priority)['time_windows']
-
-    def _get_business_time(self, sla_name, priority):
-        return self._get_priority(sla_name, priority)['business_time']
-
-    def _get_time_of_processing(self, sla_name, priority):
-        return self._get_priority(sla_name, priority)['time_of_processing']
-
-    def in_time_window(self, sla_name, priority, start_date):
-        if self._get_business_time(sla_name, priority):
-            minutes = self.business_time.getminutes(date_from_redmine(start_date, True))
-        else:
-            minutes = time_diff(start_date)
-        return self._in_time_window(sla_name, priority, minutes)
-
-    def _in_time_window(self, sla_name, priority, minutes):
-        current_time_window = None
-        if sla_name in self._config:
-            for time_window in self._get_time_windows(sla_name, priority):
-                if minutes >= time_window['minutes']:
-                    current_time_window = time_window
-                if minutes < time_window['minutes']:
-                    return current_time_window
-        return current_time_window
-
-    # def notified(self, sla_name, minutes):
-    #     if sla_name in self._config:
-    #         return self.in_time_window(sla_name, minutes)['notify']
-    #     else:
-    #         return None
+# class SLA(object):
+#
+#     @staticmethod
+#     def _time_percent(hours, percent):
+#         return int(hours * percent * 0.6)
+#
+#     def __init__(self, config):
+#         super(SLA, self).__init__()
+#         self._config = config
+#         self._calc_persent()
+#         self.business_time = BusinessTime(None)
+#
+#     def _calc_persent(self):
+#         for sla_name in self._config:
+#             for priority in self._config[sla_name]:
+#                 for i in range(len(self._config[sla_name][priority]['time_windows'])):
+#                     self._config[sla_name][priority]['time_windows'][i]['minutes'] = self._time_percent(
+#                         self._config[sla_name][priority]['time_of_processing'],
+#                         self._config[sla_name][priority]['time_windows'][i]['percent']
+#                     )
+#
+#     def _get_sla(self, name):
+#         if name in self._config:
+#             return self._config[name]
+#         return None
+#
+#     def _get_priority(self, sla_name, name):
+#         if sla_name in self._config:
+#             if name in self._config[sla_name]:
+#                 return self._config[sla_name][name]
+#             else:
+#                 if 'default' in self._config[sla_name]:
+#                     return self._config[sla_name]['default']
+#         return DEFAULT_PRIORITY
+#
+#     def _get_time_windows(self, sla_name, priority):
+#         return self._get_priority(sla_name, priority)['time_windows']
+#
+#     def _get_business_time(self, sla_name, priority):
+#         return self._get_priority(sla_name, priority)['business_time']
+#
+#     def _get_time_of_processing(self, sla_name, priority):
+#         return self._get_priority(sla_name, priority)['time_of_processing']
+#
+#     def in_time_window(self, sla_name, priority, start_date):
+#         if self._get_business_time(sla_name, priority):
+#             minutes = self.business_time.getminutes(date_from_redmine(start_date, True))
+#         else:
+#             minutes = time_diff(start_date)
+#         return self._in_time_window(sla_name, priority, minutes)
+#
+#     def _in_time_window(self, sla_name, priority, minutes):
+#         current_time_window = None
+#         if sla_name in self._config:
+#             for time_window in self._get_time_windows(sla_name, priority):
+#                 if minutes >= time_window['minutes']:
+#                     current_time_window = time_window
+#                 if minutes < time_window['minutes']:
+#                     return current_time_window
+#         return current_time_window
+#
+#     # def notified(self, sla_name, minutes):
+#     #     if sla_name in self._config:
+#     #         return self.in_time_window(sla_name, minutes)['notify']
+#     #     else:
+#     #         return None
 
 
 def _encode_csv(data):
