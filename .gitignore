@@ -112,3 +112,4 @@ venv.bak/
 *.log.*
 
 test/
+tmp/
